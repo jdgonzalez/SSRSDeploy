@@ -157,10 +157,11 @@ $Project.SelectNodes('Project/Reports/ProjectItem') |
         $RawDefinition = Get-Content -Encoding Byte -Path $RdlPath
         
         $Name = $_.Name -replace '\.rdl$',''
+		$warnings = @();
         
         Write-Verbose "Creating report $Name"
-        $Results = $Proxy.CreateReport($Name, $Folder, $true, $RawDefinition, $null)
-        if ($Results -and ($Results | Where-Object { $_.Severity -eq 'Error' })) {
+        $Results = $Proxy.CreateCatalogItem("Report", $Name, $Folder, $true, $RawDefinition, $null, [ref]$warnings)
+        if ($Results -and ($warnings | Where-Object { $_.Severity -eq 'Error' })) {
             throw 'Error uploading report'
         }
 
@@ -171,9 +172,9 @@ $Project.SelectNodes('Project/Reports/ProjectItem') |
                 if (-not $DataSourcePath) {
                     throw "Invalid data source reference '$($_.DataSourceReference)' in $RdlPath"
                 }
-                $Reference = New-Object -TypeName SSRS.ReportingService2005.DataSourceReference
+                $Reference = New-Object -TypeName SSRS.ReportingService2010.DataSourceReference
                 $Reference.Reference = $DataSourcePath
-                $DataSource = New-Object -TypeName SSRS.ReportingService2005.DataSource
+                $DataSource = New-Object -TypeName SSRS.ReportingService2010.DataSource
                 $DataSource.Item = $Reference
                 $DataSource.Name = $_.Name
                 $DataSource
