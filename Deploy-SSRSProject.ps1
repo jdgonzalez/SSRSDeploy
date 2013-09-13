@@ -35,6 +35,14 @@ param (
     [parameter(ParameterSetName='Target')]
     [switch]
     $OverwriteDataSources,
+	
+	[parameter(ParameterSetName='Target')]
+	[string]
+	$DataSetFolder,
+	
+	[parameter(ParameterSetName='Target')]
+	[switch]
+	$OverwriteDataSets,
 
     [System.Management.Automation.PSCredential]
     $Credential
@@ -96,7 +104,7 @@ function New-SSRSDataSource (
     [xml]$Rds = Get-Content -Path $RdsPath
     $ConnProps = $Rds.RptDataSource.ConnectionProperties
     
-    $Definition = New-Object -TypeName SSRS.ReportingService2005.DataSourceDefinition
+    $Definition = New-Object -TypeName SSRS.ReportingService2010.DataSourceDefinition
     $Definition.ConnectString = $ConnProps.ConnectString
     $Definition.Extension = $ConnProps.Extension 
     if ([Convert]::ToBoolean($ConnProps.IntegratedSecurity)) {
