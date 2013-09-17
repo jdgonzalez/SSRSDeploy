@@ -99,7 +99,7 @@ function New-SSRSDataSource (
 ) {
     Write-Verbose "New-SSRSDataSource -RdsPath $RdsPath -Folder $Folder"
 
-    $Folder = Normalize-SSRSFolder -Folder $Folder
+#     $Folder = Normalize-SSRSFolder -Folder $Folder
 
     [xml]$Rds = Get-Content -Path $RdsPath
     $ConnProps = $Rds.RptDataSource.ConnectionProperties
@@ -123,6 +123,37 @@ function New-SSRSDataSource (
     return $DataSource
 }
 
+
+function New-SSRSDataSet (
+	$Proxy,
+	[string]$RsdPath,
+	[string]$Folder,
+	[switch]$Overwrite
+) {
+	Write-Verbose "New-SSRSDataSet -RsdPath $RsdPath -Folder $Folder"
+	
+	[xml]$Rsd = Get-Content -Path $RsdPath
+	$DSProps = $Rsd.SharedDataset.DataSet
+	
+	$DSDefinition = New-Object -TypeName SSRS.ReportingService2010.DataSetDefinition
+	$DSDefinition.Query = $DSProps.Query
+	
+	$DataSet = New-Object -TypeName PSObject -Property @{
+		Name = $Rsd.SharedDataSet.DataSet.Name
+		Path = $Folder + '/' + $Rsd.SharedDataSet.DataSet.Name
+	}
+	
+
+	$warnings = @{}
+	if ($Overwrite -or $Proxy.GetItemType($DataSet.Path) -eq 'Unknown') {
+		#$Proxy.CreateCatalogItem("DataSet", $DataSet.Name, $Folder, $true, $DSDefinition, $null, [ref]$warnings)
+		Write-Verbose "Something would have happened here!"
+	}
+
+	return $DataSet
+}
+
+
 $script:ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -137,16 +168,21 @@ if ($PSCmdlet.ParameterSetName -eq 'Configuration') {
     $ServerUrl = $Config.ServerUrl
     $Folder = $Config.Folder
     $DataSourceFolder = $Config.DataSourceFolder
+	$DataSetFolder = $Config.DataSetFolder
     $OverwriteDataSources = $Config.OverwriteDataSources
+	$OverwriteDataSets = $Config.OverwriteDataSets
 }
+
 
 $Folder = Normalize-SSRSFolder -Folder $Folder
 $DataSourceFolder = Normalize-SSRSFolder -Folder $DataSourceFolder
+$DataSetFolder = Normalize-SSRSFolder -Folder $DataSetFolder
 
 $Proxy = & $PSScriptRoot\New-SSRSWebServiceProxy.ps1 -Uri $ServerUrl -Credential $Credential
 
 New-SSRSFolder -Proxy $Proxy -Name $Folder
 New-SSRSFolder -Proxy $Proxy -Name $DataSourceFolder
+New-SSRSFolder -Proxy $Proxy -Name $DataSetFolder
 
 $DataSourcePaths = @{}
 $Project.SelectNodes('Project/DataSources/ProjectItem') |
@@ -155,6 +191,16 @@ $Project.SelectNodes('Project/DataSources/ProjectItem') |
         $DataSource = New-SSRSDataSource -Proxy $Proxy -RdsPath $RdsPath -Folder $DataSourceFolder
         $DataSourcePaths.Add($DataSource.Name, $DataSource.Path)
     }
+
+# I may have to comment this whole section out, but lets see how it works.
+$DataSetPaths = @{}
+$Project.SelectNodes('Project/DataSets/ProjectItem') |
+	ForEach-Object {
+		$RsdPath = $ProjectRoot | Join-Path -ChildPath $_.FullPath
+		$DataSet = New-SSRSDataSet -Proxy $Proxy -RsdPath $RsdPath -Folder $DataSetFolder
+		$DataSetPaths.Add($DataSet.Name, $DataSet.Path)
+	}
+
 
 $Project.SelectNodes('Project/Reports/ProjectItem') |
     ForEach-Object {
