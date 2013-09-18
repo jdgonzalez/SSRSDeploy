@@ -133,10 +133,11 @@ function New-SSRSDataSet (
 	Write-Verbose "New-SSRSDataSet -RsdPath $RsdPath -Folder $Folder"
 	
 	[xml]$Rsd = Get-Content -Path $RsdPath
-	$DSProps = $Rsd.SharedDataset.DataSet
+	#$DSProps = $Rsd.SharedDataset.DataSet
+	$byteArray = gc $RsdPath -Encoding byte
 	
-	$DSDefinition = New-Object -TypeName SSRS.ReportingService2010.DataSetDefinition
-	$DSDefinition.Query = $DSProps.Query
+	#$DSDefinition = New-Object -TypeName SSRS.ReportingService2010.DataSetDefinition
+	#$DSDefinition.Query = $DSProps.Query
 	
 	$DataSet = New-Object -TypeName PSObject -Property @{
 		Name = $Rsd.SharedDataSet.DataSet.Name
@@ -144,10 +145,9 @@ function New-SSRSDataSet (
 	}
 	
 
-	$warnings = @{}
+	[ref]$warnings = $null
 	if ($Overwrite -or $Proxy.GetItemType($DataSet.Path) -eq 'Unknown') {
-		#$Proxy.CreateCatalogItem("DataSet", $DataSet.Name, $Folder, $true, $DSDefinition, $null, [ref]$warnings)
-		Write-Verbose "Something would have happened here!"
+		$Proxy.CreateCatalogItem("DataSet", $DataSet.Name, $Folder, $true, $byteArray, $null, $warnings)
 	}
 
 	return $DataSet
@@ -193,6 +193,7 @@ $Project.SelectNodes('Project/DataSources/ProjectItem') |
     }
 
 # I may have to comment this whole section out, but lets see how it works.
+
 $DataSetPaths = @{}
 $Project.SelectNodes('Project/DataSets/ProjectItem') |
 	ForEach-Object {
